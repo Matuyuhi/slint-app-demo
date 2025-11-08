@@ -31,7 +31,7 @@ component GlowRing inherits Rectangle {
     }
 }
 
-// 円形プログレスバー
+// 円形プログレスバー（シンプル版）
 component CircularProgress inherits Rectangle {
     in property <float> progress: 0.0; // 0-100
     in property <color> ring-color: #00d4ff;
@@ -45,21 +45,24 @@ component CircularProgress inherits Rectangle {
         width: 100%;
         height: 100%;
         border-radius: self.width / 2;
-        background: radial-gradient(circle, #0f0f1e 60%, transparent 60%, transparent 70%, #1a1a2e80 70%);
+        background: #1a1a2e;
+        border-width: 8px;
+        border-color: #0f0f1e;
     }
 
-    // プログレスリング（SVGで描画したい場合の代替として複数の矩形で近似）
-    // ここでは簡略化のため、円形のストロークを模倣
+    // プログレスリング（簡略版）
     Rectangle {
         width: 100%;
         height: 100%;
         border-radius: self.width / 2;
         border-width: 8px;
-        border-color: transparent;
-        background: conic-gradient(root.ring-color calc(root.progress * 3.6deg), transparent calc(root.progress * 3.6deg));
+        border-color: root.ring-color;
+        opacity: root.progress / 100;
 
-        // Slintではconic-gradientが使えないため、代替として
-        // 簡易的な表現を使用
+        animate opacity {
+            duration: 500ms;
+            easing: ease-in-out;
+        }
     }
 
     // 中央テキスト
@@ -260,7 +263,7 @@ component GraphBar inherits Rectangle {
         y: parent.height - (parent.height * root.value / 100);
         height: 4px;
         background: root.bar-color.brighter(0.6);
-        border-radius: 6px 6px 0 0;
+        border-radius: 6px;
         opacity: 0.8;
 
         animate y {
