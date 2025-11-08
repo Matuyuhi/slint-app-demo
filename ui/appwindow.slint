@@ -1,6 +1,95 @@
 import { VerticalBox, HorizontalBox, GridBox } from "std-widgets.slint";
 
-// メトリクスカードコンポーネント
+// パルスエフェクト付きグローリング
+component GlowRing inherits Rectangle {
+    in property <color> glow-color: #00d4ff;
+    in property <float> pulse-speed: 2000ms;
+
+    width: 100%;
+    height: 100%;
+
+    states [
+        pulsing when root.visible: {
+            glow-layer.opacity: 0.3;
+        }
+    ]
+
+    // グローレイヤー
+    glow-layer := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        border-width: 2px;
+        border-color: root.glow-color;
+        opacity: 0.8;
+
+        animate opacity {
+            duration: root.pulse-speed;
+            easing: ease-in-out;
+            iteration-count: -1;
+        }
+    }
+}
+
+// 円形プログレスバー
+component CircularProgress inherits Rectangle {
+    in property <float> progress: 0.0; // 0-100
+    in property <color> ring-color: #00d4ff;
+    in property <string> center-text: "0%";
+
+    width: 120px;
+    height: 120px;
+
+    // 背景リング
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: self.width / 2;
+        background: radial-gradient(circle, #0f0f1e 60%, transparent 60%, transparent 70%, #1a1a2e80 70%);
+    }
+
+    // プログレスリング（SVGで描画したい場合の代替として複数の矩形で近似）
+    // ここでは簡略化のため、円形のストロークを模倣
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: self.width / 2;
+        border-width: 8px;
+        border-color: transparent;
+        background: conic-gradient(root.ring-color calc(root.progress * 3.6deg), transparent calc(root.progress * 3.6deg));
+
+        // Slintではconic-gradientが使えないため、代替として
+        // 簡易的な表現を使用
+    }
+
+    // 中央テキスト
+    Text {
+        text: root.center-text;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 800;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    // グロー効果
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: self.width / 2;
+        border-width: 2px;
+        border-color: root.ring-color;
+        opacity: 0.5;
+
+        animate opacity {
+            duration: 1500ms;
+            easing: ease-in-out;
+            iteration-count: -1;
+        }
+    }
+}
+
+// メトリクスカードコンポーネント（アップグレード版）
 component MetricCard inherits Rectangle {
     in property <string> title: "Metric";
     in property <string> value: "0";
@@ -8,127 +97,268 @@ component MetricCard inherits Rectangle {
     in property <color> accent-color: #00d4ff;
     in property <float> percentage: 0.0;
 
-    background: #1a1a2e;
-    border-radius: 12px;
-    drop-shadow-blur: 10px;
-    drop-shadow-color: #00000040;
+    callback clicked();
+
+    property <bool> hovered: touch.has-hover;
+
+    background: @linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    drop-shadow-blur: 20px;
+    drop-shadow-color: hovered ? accent-color.with-alpha(0.3) : #00000060;
+
+    // グローボーダー
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: parent.border-radius;
+        border-width: 2px;
+        border-color: root.hovered ? root.accent-color : transparent;
+        opacity: 0.6;
+
+        animate border-color {
+            duration: 300ms;
+            easing: ease-out;
+        }
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
 
     VerticalLayout {
-        padding: 20px;
-        spacing: 12px;
+        padding: 24px;
+        spacing: 16px;
 
         // タイトル
-        Text {
-            text: root.title;
-            color: #8b8b9f;
-            font-size: 14px;
-            font-weight: 500;
+        HorizontalLayout {
+            spacing: 8px;
+
+            // アクセントドット
+            Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.accent-color;
+
+                // パルスアニメーション
+                Rectangle {
+                    width: parent.width * 2;
+                    height: parent.height * 2;
+                    x: -parent.width / 2;
+                    y: -parent.height / 2;
+                    border-radius: self.width / 2;
+                    background: root.accent-color.with-alpha(0.3);
+
+                    animate width, height {
+                        duration: 2000ms;
+                        easing: ease-out;
+                        iteration-count: -1;
+                    }
+                }
+            }
+
+            Text {
+                text: root.title;
+                color: #a8b2d1;
+                font-size: 15px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
         }
 
         // 値
         HorizontalLayout {
             alignment: start;
+            spacing: 4px;
+
             Text {
                 text: root.value;
                 color: #ffffff;
-                font-size: 36px;
-                font-weight: 700;
+                font-size: 48px;
+                font-weight: 900;
             }
             Text {
                 text: root.unit;
-                color: #8b8b9f;
-                font-size: 18px;
-                font-weight: 500;
+                color: root.accent-color;
+                font-size: 20px;
+                font-weight: 700;
                 vertical-alignment: bottom;
             }
         }
 
-        // プログレスバー
+        // プログレスバー（グロー付き）
         Rectangle {
-            height: 6px;
+            height: 8px;
             background: #0f0f1e;
-            border-radius: 3px;
+            border-radius: 4px;
 
+            // グローエフェクト
             Rectangle {
+                y: -2px;
                 width: parent.width * root.percentage / 100;
-                height: parent.height;
+                height: parent.height + 4px;
                 background: root.accent-color;
-                border-radius: 3px;
+                border-radius: 4px;
+                drop-shadow-blur: 8px;
+                drop-shadow-color: root.accent-color.with-alpha(0.6);
 
                 animate width {
-                    duration: 500ms;
-                    easing: ease-in-out;
+                    duration: 800ms;
+                    easing: cubic-bezier(0.4, 0.0, 0.2, 1);
                 }
             }
+        }
+
+        // パーセンテージ表示
+        Text {
+            text: round(root.percentage) + "% capacity";
+            color: #8b8b9f;
+            font-size: 12px;
+            font-weight: 500;
         }
     }
 }
 
-// グラフバーコンポーネント
+// グラフバーコンポーネント（ネオンエフェクト付き）
 component GraphBar inherits Rectangle {
     in property <float> value: 0.0;
     in property <color> bar-color: #00d4ff;
 
-    background: #0f0f1e;
-    border-radius: 4px;
+    property <bool> hovered: touch-area.has-hover;
 
+    background: #0f0f1e;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #1a1a2e;
+
+    touch-area := TouchArea {}
+
+    // バーの本体
     Rectangle {
         y: parent.height - (parent.height * root.value / 100);
         height: parent.height * root.value / 100;
-        background: root.bar-color;
-        border-radius: 4px;
+        background: @linear-gradient(180deg,
+            root.bar-color.brighter(0.3) 0%,
+            root.bar-color 50%,
+            root.bar-color.darker(0.2) 100%);
+        border-radius: 6px;
+        drop-shadow-blur: root.hovered ? 12px : 6px;
+        drop-shadow-color: root.bar-color.with-alpha(0.8);
 
-        animate height {
-            duration: 600ms;
-            easing: ease-out;
+        animate height, y {
+            duration: 800ms;
+            easing: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
+        animate drop-shadow-blur {
+            duration: 200ms;
+        }
+    }
+
+    // トップハイライト
+    Rectangle {
+        y: parent.height - (parent.height * root.value / 100);
+        height: 4px;
+        background: root.bar-color.brighter(0.6);
+        border-radius: 6px 6px 0 0;
+        opacity: 0.8;
+
         animate y {
-            duration: 600ms;
-            easing: ease-out;
+            duration: 800ms;
+            easing: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
     }
 }
 
-// ステータスインジケーター
+// ステータスインジケーター（アップグレード版）
 component StatusIndicator inherits Rectangle {
     in property <string> label: "Status";
     in property <bool> active: false;
+    in property <string> icon: "●";
 
-    height: 40px;
-    background: #1a1a2e;
-    border-radius: 8px;
+    property <bool> hovered: touch.has-hover;
+
+    height: 50px;
+    background: @linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: root.hovered ? (root.active ? #00ff88 : #ff4444) : transparent;
+
+    animate border-color {
+        duration: 300ms;
+    }
+
+    touch := TouchArea {}
 
     HorizontalLayout {
-        padding: 12px;
-        spacing: 12px;
+        padding: 16px;
+        spacing: 14px;
         alignment: start;
 
+        // ステータスドット（パルス付き）
         Rectangle {
-            width: 12px;
-            height: 12px;
-            border-radius: 6px;
-            background: root.active ? #00ff88 : #ff4444;
+            width: 16px;
+            height: 16px;
+            y: parent.height / 2 - self.height / 2;
 
-            animate background {
-                duration: 300ms;
+            // パルスエフェクト
+            Rectangle {
+                width: parent.width * (root.active ? 2.5 : 1);
+                height: parent.height * (root.active ? 2.5 : 1);
+                x: parent.width / 2 - self.width / 2;
+                y: parent.height / 2 - self.height / 2;
+                border-radius: self.width / 2;
+                background: (root.active ? #00ff88 : #ff4444).with-alpha(0.2);
+
+                animate width, height {
+                    duration: 1500ms;
+                    easing: ease-out;
+                    iteration-count: root.active ? -1 : 0;
+                }
+            }
+
+            // コアドット
+            Rectangle {
+                width: parent.width;
+                height: parent.height;
+                border-radius: self.width / 2;
+                background: root.active ? #00ff88 : #ff4444;
+                drop-shadow-blur: 8px;
+                drop-shadow-color: root.active ? #00ff8880 : #ff444480;
             }
         }
 
         Text {
             text: root.label;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+
+        Rectangle { horizontal-stretch: 1; }
+
+        // ステータステキスト
+        Text {
+            text: root.active ? "ONLINE" : "OFFLINE";
+            color: root.active ? #00ff88 : #ff4444;
+            font-size: 12px;
+            font-weight: 700;
             vertical-alignment: center;
         }
     }
 }
 
 export component AppWindow inherits Window {
-    title: "Dashboard Analytics";
-    preferred-width: 1200px;
-    preferred-height: 800px;
-    background: #0f0f1e;
+    title: "⚡ Cyber Dashboard - System Monitor";
+    preferred-width: 1400px;
+    preferred-height: 900px;
+
+    // グラデーション背景
+    background: @linear-gradient(135deg,
+        #0a0a1e 0%,
+        #0f0f2e 50%,
+        #0a0a1e 100%);
 
     // プロパティ
     in-out property <int> cpu-usage: 0;
@@ -138,6 +368,7 @@ export component AppWindow inherits Window {
     in-out property <bool> system-status: true;
     in-out property <bool> database-status: true;
     in-out property <bool> api-status: true;
+    in-out property <string> current-time: "00:00:00";
 
     // グラフデータ
     in-out property <float> graph1: 45.0;
@@ -149,56 +380,133 @@ export component AppWindow inherits Window {
     in-out property <float> graph7: 63.0;
     in-out property <float> graph8: 77.0;
 
+    // 背景装飾グリッド
+    Rectangle {
+        width: 100%;
+        height: 100%;
+
+        // グリッドパターン
+        for row in [0, 1, 2, 3, 4]: Rectangle {
+            y: row * parent.height / 5;
+            width: 100%;
+            height: 1px;
+            background: #1a1a3e40;
+        }
+
+        for col in [0, 1, 2, 3, 4, 5]: Rectangle {
+            x: col * parent.width / 6;
+            width: 1px;
+            height: 100%;
+            background: #1a1a3e40;
+        }
+    }
+
     VerticalBox {
-        padding: 30px;
-        spacing: 24px;
+        padding: 35px;
+        spacing: 28px;
 
-        // ヘッダー
+        // ヘッダー（アップグレード版）
         HorizontalLayout {
-            spacing: 20px;
+            spacing: 24px;
 
+            // タイトルセクション
             VerticalLayout {
-                spacing: 8px;
-                Text {
-                    text: "System Dashboard";
-                    color: #ffffff;
-                    font-size: 32px;
-                    font-weight: 800;
+                spacing: 10px;
+
+                HorizontalLayout {
+                    spacing: 12px;
+
+                    // アイコン装飾
+                    Rectangle {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 8px;
+                        background: @linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+                        drop-shadow-blur: 12px;
+                        drop-shadow-color: #00d4ff80;
+
+                        Text {
+                            text: "⚡";
+                            font-size: 24px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    Text {
+                        text: "CYBER DASHBOARD";
+                        color: #ffffff;
+                        font-size: 36px;
+                        font-weight: 900;
+                        vertical-alignment: center;
+                    }
                 }
-                Text {
-                    text: "Real-time monitoring and analytics";
-                    color: #8b8b9f;
-                    font-size: 14px;
+
+                HorizontalLayout {
+                    spacing: 8px;
+
+                    Rectangle {
+                        width: 4px;
+                        height: 20px;
+                        background: #00d4ff;
+                        border-radius: 2px;
+                    }
+
+                    Text {
+                        text: "Real-time System Monitoring & Performance Analytics";
+                        color: #8b8b9f;
+                        font-size: 14px;
+                        font-weight: 500;
+                        vertical-alignment: center;
+                    }
                 }
             }
 
-            Rectangle {
-                horizontal-stretch: 1;
-            }
+            Rectangle { horizontal-stretch: 1; }
 
-            // 現在時刻表示
+            // 時刻表示（ネオンスタイル）
             Rectangle {
-                width: 200px;
-                background: #1a1a2e;
-                border-radius: 10px;
+                width: 240px;
+                height: 70px;
+                background: @linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 14px;
+                border-width: 2px;
+                border-color: #00d4ff;
+                drop-shadow-blur: 16px;
+                drop-shadow-color: #00d4ff40;
 
-                Text {
-                    text: "2025-11-08 11:50";
-                    color: #00d4ff;
-                    font-size: 16px;
-                    font-weight: 600;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 4px;
+
+                    Text {
+                        text: "CURRENT TIME";
+                        color: #8b8b9f;
+                        font-size: 10px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        letter-spacing: 1px;
+                    }
+
+                    Text {
+                        text: root.current-time;
+                        color: #00d4ff;
+                        font-size: 24px;
+                        font-weight: 900;
+                        horizontal-alignment: center;
+                        drop-shadow-blur: 8px;
+                        drop-shadow-color: #00d4ff80;
+                    }
                 }
             }
         }
 
-        // メトリクスカード
+        // メトリクスカード（4列グリッド）
         HorizontalLayout {
-            spacing: 20px;
+            spacing: 24px;
 
             MetricCard {
-                title: "CPU Usage";
+                title: "⚙ CPU Usage";
                 value: cpu-usage;
                 unit: "%";
                 accent-color: #00d4ff;
@@ -206,7 +514,7 @@ export component AppWindow inherits Window {
             }
 
             MetricCard {
-                title: "Memory";
+                title: "💾 Memory";
                 value: memory-usage;
                 unit: "%";
                 accent-color: #ff00ff;
@@ -214,7 +522,7 @@ export component AppWindow inherits Window {
             }
 
             MetricCard {
-                title: "Disk";
+                title: "💿 Disk Space";
                 value: disk-usage;
                 unit: "%";
                 accent-color: #ffaa00;
@@ -222,7 +530,7 @@ export component AppWindow inherits Window {
             }
 
             MetricCard {
-                title: "Network";
+                title: "🌐 Network";
                 value: network-usage;
                 unit: "MB/s";
                 accent-color: #00ff88;
@@ -232,29 +540,78 @@ export component AppWindow inherits Window {
 
         // グラフとステータス
         HorizontalLayout {
-            spacing: 20px;
+            spacing: 24px;
 
-            // パフォーマンスグラフ
+            // パフォーマンスグラフ（アップグレード版）
             Rectangle {
                 horizontal-stretch: 2;
-                background: #1a1a2e;
-                border-radius: 12px;
-                drop-shadow-blur: 10px;
-                drop-shadow-color: #00000040;
+                background: @linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 16px;
+                border-width: 1px;
+                border-color: #00d4ff20;
+                drop-shadow-blur: 20px;
+                drop-shadow-color: #00000080;
 
                 VerticalLayout {
-                    padding: 20px;
-                    spacing: 16px;
+                    padding: 28px;
+                    spacing: 20px;
 
-                    Text {
-                        text: "Performance Metrics";
-                        color: #ffffff;
-                        font-size: 18px;
-                        font-weight: 700;
+                    // グラフヘッダー
+                    HorizontalLayout {
+                        spacing: 12px;
+
+                        Rectangle {
+                            width: 6px;
+                            height: 24px;
+                            background: @linear-gradient(180deg, #00d4ff 0%, #0088ff 100%);
+                            border-radius: 3px;
+                        }
+
+                        Text {
+                            text: "PERFORMANCE METRICS";
+                            color: #ffffff;
+                            font-size: 20px;
+                            font-weight: 900;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle { horizontal-stretch: 1; }
+
+                        Text {
+                            text: "Live";
+                            color: #00ff88;
+                            font-size: 12px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle {
+                            width: 8px;
+                            height: 8px;
+                            border-radius: 4px;
+                            background: #00ff88;
+
+                            // パルス
+                            Rectangle {
+                                width: parent.width * 2;
+                                height: parent.height * 2;
+                                x: -parent.width / 2;
+                                y: -parent.height / 2;
+                                border-radius: self.width / 2;
+                                background: #00ff8840;
+
+                                animate width, height {
+                                    duration: 1500ms;
+                                    easing: ease-out;
+                                    iteration-count: -1;
+                                }
+                            }
+                        }
                     }
 
+                    // グラフエリア
                     HorizontalLayout {
-                        spacing: 8px;
+                        spacing: 12px;
                         alignment: stretch;
 
                         GraphBar {
@@ -291,75 +648,103 @@ export component AppWindow inherits Window {
                         }
                     }
 
+                    // 凡例
                     HorizontalLayout {
-                        spacing: 20px;
-                        padding-top: 10px;
+                        spacing: 28px;
+                        padding-top: 12px;
 
                         HorizontalLayout {
-                            spacing: 8px;
+                            spacing: 10px;
                             Rectangle {
-                                width: 12px;
-                                height: 12px;
+                                width: 14px;
+                                height: 14px;
                                 background: #00d4ff;
-                                border-radius: 2px;
+                                border-radius: 3px;
+                                drop-shadow-blur: 6px;
+                                drop-shadow-color: #00d4ff60;
                             }
                             Text {
-                                text: "CPU";
-                                color: #8b8b9f;
-                                font-size: 12px;
+                                text: "CPU Cores";
+                                color: #a8b2d1;
+                                font-size: 13px;
+                                font-weight: 600;
+                                vertical-alignment: center;
                             }
                         }
 
                         HorizontalLayout {
-                            spacing: 8px;
+                            spacing: 10px;
                             Rectangle {
-                                width: 12px;
-                                height: 12px;
+                                width: 14px;
+                                height: 14px;
                                 background: #ff00ff;
-                                border-radius: 2px;
+                                border-radius: 3px;
+                                drop-shadow-blur: 6px;
+                                drop-shadow-color: #ff00ff60;
                             }
                             Text {
-                                text: "Memory";
-                                color: #8b8b9f;
-                                font-size: 12px;
+                                text: "Memory Banks";
+                                color: #a8b2d1;
+                                font-size: 13px;
+                                font-weight: 600;
+                                vertical-alignment: center;
                             }
                         }
 
                         HorizontalLayout {
-                            spacing: 8px;
+                            spacing: 10px;
                             Rectangle {
-                                width: 12px;
-                                height: 12px;
+                                width: 14px;
+                                height: 14px;
                                 background: #ffaa00;
-                                border-radius: 2px;
+                                border-radius: 3px;
+                                drop-shadow-blur: 6px;
+                                drop-shadow-color: #ffaa0060;
                             }
                             Text {
-                                text: "Network";
-                                color: #8b8b9f;
-                                font-size: 12px;
+                                text: "Network Traffic";
+                                color: #a8b2d1;
+                                font-size: 13px;
+                                font-weight: 600;
+                                vertical-alignment: center;
                             }
                         }
                     }
                 }
             }
 
-            // システムステータス
+            // システムステータス（アップグレード版）
             Rectangle {
                 horizontal-stretch: 1;
-                background: #1a1a2e;
-                border-radius: 12px;
-                drop-shadow-blur: 10px;
-                drop-shadow-color: #00000040;
+                background: @linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 16px;
+                border-width: 1px;
+                border-color: #00d4ff20;
+                drop-shadow-blur: 20px;
+                drop-shadow-color: #00000080;
 
                 VerticalLayout {
-                    padding: 20px;
-                    spacing: 16px;
+                    padding: 28px;
+                    spacing: 20px;
 
-                    Text {
-                        text: "System Status";
-                        color: #ffffff;
-                        font-size: 18px;
-                        font-weight: 700;
+                    // ステータスヘッダー
+                    HorizontalLayout {
+                        spacing: 12px;
+
+                        Rectangle {
+                            width: 6px;
+                            height: 24px;
+                            background: @linear-gradient(180deg, #00ff88 0%, #00cc66 100%);
+                            border-radius: 3px;
+                        }
+
+                        Text {
+                            text: "SYSTEM STATUS";
+                            color: #ffffff;
+                            font-size: 20px;
+                            font-weight: 900;
+                            vertical-alignment: center;
+                        }
                     }
 
                     StatusIndicator {
@@ -368,7 +753,7 @@ export component AppWindow inherits Window {
                     }
 
                     StatusIndicator {
-                        label: "Database";
+                        label: "Database Connection";
                         active: database-status;
                     }
 
@@ -381,25 +766,108 @@ export component AppWindow inherits Window {
                         vertical-stretch: 1;
                     }
 
+                    // 統計情報
+                    Rectangle {
+                        height: 80px;
+                        background: #0f0f1e;
+                        border-radius: 12px;
+                        border-width: 1px;
+                        border-color: #00d4ff20;
+
+                        HorizontalLayout {
+                            padding: 16px;
+                            spacing: 16px;
+
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text {
+                                    text: "UPTIME";
+                                    color: #8b8b9f;
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    letter-spacing: 1px;
+                                }
+                                Text {
+                                    text: "99.9%";
+                                    color: #00ff88;
+                                    font-size: 24px;
+                                    font-weight: 900;
+                                }
+                            }
+
+                            Rectangle {
+                                width: 1px;
+                                background: #1a1a2e;
+                            }
+
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text {
+                                    text: "LATENCY";
+                                    color: #8b8b9f;
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    letter-spacing: 1px;
+                                }
+                                Text {
+                                    text: "12ms";
+                                    color: #00d4ff;
+                                    font-size: 24px;
+                                    font-weight: 900;
+                                }
+                            }
+                        }
+                    }
+
                     // アクションボタン
                     Rectangle {
-                        height: 45px;
-                        background: #00d4ff;
-                        border-radius: 8px;
+                        height: 52px;
+                        background: @linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+                        border-radius: 12px;
+                        drop-shadow-blur: 12px;
+                        drop-shadow-color: #00d4ff60;
 
-                        TouchArea {
+                        property <bool> btn-hovered: btn-touch.has-hover;
+
+                        states [
+                            hovered when root.btn-hovered: {
+                                self.drop-shadow-blur: 20px;
+                            }
+                        ]
+
+                        animate drop-shadow-blur {
+                            duration: 200ms;
+                        }
+
+                        btn-touch := TouchArea {
                             clicked => {
                                 // ボタンクリック時の処理
                             }
                         }
 
-                        Text {
-                            text: "Refresh Data";
-                            color: #0f0f1e;
-                            font-size: 14px;
-                            font-weight: 700;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
+                        HorizontalLayout {
+                            spacing: 8px;
+
+                            Rectangle { horizontal-stretch: 1; }
+
+                            Text {
+                                text: "⟳";
+                                color: #0f0f1e;
+                                font-size: 20px;
+                                font-weight: 900;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: "REFRESH DATA";
+                                color: #0f0f1e;
+                                font-size: 14px;
+                                font-weight: 900;
+                                vertical-alignment: center;
+                                letter-spacing: 1px;
+                            }
+
+                            Rectangle { horizontal-stretch: 1; }
                         }
                     }
                 }
