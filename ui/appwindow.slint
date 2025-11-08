@@ -3,7 +3,7 @@ import { VerticalBox, HorizontalBox, GridBox } from "std-widgets.slint";
 // パルスエフェクト付きグローリング
 component GlowRing inherits Rectangle {
     in property <color> glow-color: #00d4ff;
-    in property <float> pulse-speed: 2000ms;
+    in property <duration> pulse-speed: 2000ms;
 
     width: 100%;
     height: 100%;
@@ -833,8 +833,8 @@ export component AppWindow inherits Window {
                         property <bool> btn-hovered: btn-touch.has-hover;
 
                         states [
-                            hovered when root.btn-hovered: {
-                                self.drop-shadow-blur: 20px;
+                            hovered when btn-hovered: {
+                                drop-shadow-blur: 20px;
                             }
                         ]
 
