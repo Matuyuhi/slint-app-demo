@@ -4,6 +4,13 @@ project(dashboard-app LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# macOS用のrpath設定
+if(APPLE)
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_RPATH "@executable_path;@executable_path/../lib")
+endif()
+
 # Slintをダウンロードして利用
 include(FetchContent)
 FetchContent_Declare(
