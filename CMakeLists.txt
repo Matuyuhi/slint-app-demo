@@ -9,7 +9,7 @@ include(FetchContent)
 FetchContent_Declare(
     Slint
     GIT_REPOSITORY https://github.com/slint-ui/slint.git
-    GIT_TAG v1.9.1
+    GIT_TAG v1.14.1
     GIT_SHALLOW ON
 )
 FetchContent_MakeAvailable(Slint)
