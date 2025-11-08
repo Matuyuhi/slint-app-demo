@@ -27,8 +27,30 @@ add_executable(dashboard-app src/main.cpp)
 # Slint UIファイルをコンパイル
 slint_target_sources(dashboard-app ui/appwindow.slint)
 
-# Slintライブラリをリンク
+# Slintをリンク
 target_link_libraries(dashboard-app PRIVATE Slint::Slint)
 
-# C++20の機能を有効化
-target_compile_features(dashboard-app PRIVATE cxx_std_20)
+# 実体ターゲット(slnt_cpp-shared or slint_cpp-static)を条件分岐で拾う
+set(_slint_libdir "$<IF:$<TARGET_EXISTS:slint_cpp-shared>,\
+$<TARGET_FILE_DIR:slint_cpp-shared>,\
+$<TARGET_FILE_DIR:slint_cpp-static>>")
+set(_slint_libfile "$<IF:$<TARGET_EXISTS:slint_cpp-shared>,\
+$<TARGET_FILE:slint_cpp-shared>,\
+$<TARGET_FILE:slint_cpp-static>>")
+
+# 1) ビルドツリーで実行できるよう RPATH を埋める
+set_target_properties(dashboard-app PROPERTIES
+  BUILD_RPATH "${_slint_libdir}"
+)
+
+# 2) 併せて .dylib/.a を実行ファイルの横へコピー（任意だが便利）
+add_custom_command(TARGET dashboard-app POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          "${_slint_libfile}"
+          "$<TARGET_FILE_DIR:dashboard-app>"
+)
+
+# macOS で横置き解決したいなら（任意）
+set_target_properties(dashboard-app PROPERTIES
+  BUILD_RPATH "@loader_path"
+)
