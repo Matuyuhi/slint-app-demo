@@ -1,0 +1,409 @@
+import { VerticalBox, HorizontalBox, GridBox } from "std-widgets.slint";
+
+// メトリクスカードコンポーネント
+component MetricCard inherits Rectangle {
+    in property <string> title: "Metric";
+    in property <string> value: "0";
+    in property <string> unit: "%";
+    in property <color> accent-color: #00d4ff;
+    in property <float> percentage: 0.0;
+
+    background: #1a1a2e;
+    border-radius: 12px;
+    drop-shadow-blur: 10px;
+    drop-shadow-color: #00000040;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 12px;
+
+        // タイトル
+        Text {
+            text: root.title;
+            color: #8b8b9f;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        // 値
+        HorizontalLayout {
+            alignment: start;
+            Text {
+                text: root.value;
+                color: #ffffff;
+                font-size: 36px;
+                font-weight: 700;
+            }
+            Text {
+                text: root.unit;
+                color: #8b8b9f;
+                font-size: 18px;
+                font-weight: 500;
+                vertical-alignment: bottom;
+            }
+        }
+
+        // プログレスバー
+        Rectangle {
+            height: 6px;
+            background: #0f0f1e;
+            border-radius: 3px;
+
+            Rectangle {
+                width: parent.width * root.percentage / 100;
+                height: parent.height;
+                background: root.accent-color;
+                border-radius: 3px;
+
+                animate width {
+                    duration: 500ms;
+                    easing: ease-in-out;
+                }
+            }
+        }
+    }
+}
+
+// グラフバーコンポーネント
+component GraphBar inherits Rectangle {
+    in property <float> value: 0.0;
+    in property <color> bar-color: #00d4ff;
+
+    background: #0f0f1e;
+    border-radius: 4px;
+
+    Rectangle {
+        y: parent.height - (parent.height * root.value / 100);
+        height: parent.height * root.value / 100;
+        background: root.bar-color;
+        border-radius: 4px;
+
+        animate height {
+            duration: 600ms;
+            easing: ease-out;
+        }
+
+        animate y {
+            duration: 600ms;
+            easing: ease-out;
+        }
+    }
+}
+
+// ステータスインジケーター
+component StatusIndicator inherits Rectangle {
+    in property <string> label: "Status";
+    in property <bool> active: false;
+
+    height: 40px;
+    background: #1a1a2e;
+    border-radius: 8px;
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+        alignment: start;
+
+        Rectangle {
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background: root.active ? #00ff88 : #ff4444;
+
+            animate background {
+                duration: 300ms;
+            }
+        }
+
+        Text {
+            text: root.label;
+            color: #ffffff;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Dashboard Analytics";
+    preferred-width: 1200px;
+    preferred-height: 800px;
+    background: #0f0f1e;
+
+    // プロパティ
+    in-out property <int> cpu-usage: 0;
+    in-out property <int> memory-usage: 0;
+    in-out property <int> disk-usage: 0;
+    in-out property <int> network-usage: 0;
+    in-out property <bool> system-status: true;
+    in-out property <bool> database-status: true;
+    in-out property <bool> api-status: true;
+
+    // グラフデータ
+    in-out property <float> graph1: 45.0;
+    in-out property <float> graph2: 72.0;
+    in-out property <float> graph3: 38.0;
+    in-out property <float> graph4: 91.0;
+    in-out property <float> graph5: 56.0;
+    in-out property <float> graph6: 84.0;
+    in-out property <float> graph7: 63.0;
+    in-out property <float> graph8: 77.0;
+
+    VerticalBox {
+        padding: 30px;
+        spacing: 24px;
+
+        // ヘッダー
+        HorizontalLayout {
+            spacing: 20px;
+
+            VerticalLayout {
+                spacing: 8px;
+                Text {
+                    text: "System Dashboard";
+                    color: #ffffff;
+                    font-size: 32px;
+                    font-weight: 800;
+                }
+                Text {
+                    text: "Real-time monitoring and analytics";
+                    color: #8b8b9f;
+                    font-size: 14px;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            // 現在時刻表示
+            Rectangle {
+                width: 200px;
+                background: #1a1a2e;
+                border-radius: 10px;
+
+                Text {
+                    text: "2025-11-08 11:50";
+                    color: #00d4ff;
+                    font-size: 16px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        // メトリクスカード
+        HorizontalLayout {
+            spacing: 20px;
+
+            MetricCard {
+                title: "CPU Usage";
+                value: cpu-usage;
+                unit: "%";
+                accent-color: #00d4ff;
+                percentage: cpu-usage;
+            }
+
+            MetricCard {
+                title: "Memory";
+                value: memory-usage;
+                unit: "%";
+                accent-color: #ff00ff;
+                percentage: memory-usage;
+            }
+
+            MetricCard {
+                title: "Disk";
+                value: disk-usage;
+                unit: "%";
+                accent-color: #ffaa00;
+                percentage: disk-usage;
+            }
+
+            MetricCard {
+                title: "Network";
+                value: network-usage;
+                unit: "MB/s";
+                accent-color: #00ff88;
+                percentage: network-usage;
+            }
+        }
+
+        // グラフとステータス
+        HorizontalLayout {
+            spacing: 20px;
+
+            // パフォーマンスグラフ
+            Rectangle {
+                horizontal-stretch: 2;
+                background: #1a1a2e;
+                border-radius: 12px;
+                drop-shadow-blur: 10px;
+                drop-shadow-color: #00000040;
+
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 16px;
+
+                    Text {
+                        text: "Performance Metrics";
+                        color: #ffffff;
+                        font-size: 18px;
+                        font-weight: 700;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: stretch;
+
+                        GraphBar {
+                            value: graph1;
+                            bar-color: #00d4ff;
+                        }
+                        GraphBar {
+                            value: graph2;
+                            bar-color: #00d4ff;
+                        }
+                        GraphBar {
+                            value: graph3;
+                            bar-color: #00d4ff;
+                        }
+                        GraphBar {
+                            value: graph4;
+                            bar-color: #00d4ff;
+                        }
+                        GraphBar {
+                            value: graph5;
+                            bar-color: #ff00ff;
+                        }
+                        GraphBar {
+                            value: graph6;
+                            bar-color: #ff00ff;
+                        }
+                        GraphBar {
+                            value: graph7;
+                            bar-color: #ffaa00;
+                        }
+                        GraphBar {
+                            value: graph8;
+                            bar-color: #ffaa00;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 20px;
+                        padding-top: 10px;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                background: #00d4ff;
+                                border-radius: 2px;
+                            }
+                            Text {
+                                text: "CPU";
+                                color: #8b8b9f;
+                                font-size: 12px;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                background: #ff00ff;
+                                border-radius: 2px;
+                            }
+                            Text {
+                                text: "Memory";
+                                color: #8b8b9f;
+                                font-size: 12px;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                background: #ffaa00;
+                                border-radius: 2px;
+                            }
+                            Text {
+                                text: "Network";
+                                color: #8b8b9f;
+                                font-size: 12px;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // システムステータス
+            Rectangle {
+                horizontal-stretch: 1;
+                background: #1a1a2e;
+                border-radius: 12px;
+                drop-shadow-blur: 10px;
+                drop-shadow-color: #00000040;
+
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 16px;
+
+                    Text {
+                        text: "System Status";
+                        color: #ffffff;
+                        font-size: 18px;
+                        font-weight: 700;
+                    }
+
+                    StatusIndicator {
+                        label: "System Services";
+                        active: system-status;
+                    }
+
+                    StatusIndicator {
+                        label: "Database";
+                        active: database-status;
+                    }
+
+                    StatusIndicator {
+                        label: "API Server";
+                        active: api-status;
+                    }
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                    }
+
+                    // アクションボタン
+                    Rectangle {
+                        height: 45px;
+                        background: #00d4ff;
+                        border-radius: 8px;
+
+                        TouchArea {
+                            clicked => {
+                                // ボタンクリック時の処理
+                            }
+                        }
+
+                        Text {
+                            text: "Refresh Data";
+                            color: #0f0f1e;
+                            font-size: 14px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
